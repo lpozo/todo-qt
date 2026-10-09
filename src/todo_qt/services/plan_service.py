@@ -92,15 +92,15 @@ class PlanService:
 
     def edit_title(self, task_id: TaskId, title: str) -> ChangeResult:
         """Change a task's title."""
-        raise NotImplementedError
+        return self._commit(self._plan.edit_title(task_id, title))
 
     def reschedule(self, task_id: TaskId, slot: TimeSlot) -> ChangeResult:
         """Change a task's slot."""
-        raise NotImplementedError
+        return self._commit(self._plan.reschedule(task_id, slot))
 
     def set_done(self, task_id: TaskId, done: bool) -> ChangeResult:
         """Set a task's done flag."""
-        raise NotImplementedError
+        return self._commit(self._plan.set_done(task_id, done))
 
     def delete_task(self, task_id: TaskId) -> ChangeResult:
         """Delete a task, remembering it for undo."""
