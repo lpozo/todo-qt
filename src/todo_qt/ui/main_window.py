@@ -1,5 +1,6 @@
 """Main application window."""
 
+import sys
 from datetime import datetime, time
 
 from PySide6.QtCore import QModelIndex, QSignalBlocker, Qt, QTime, QTimer
@@ -23,6 +24,14 @@ from todo_qt.ui.task_model import TaskListModel
 
 OVERDUE_REFRESH_MS = 15_000
 """Interval of the overdue re-evaluation timer."""
+
+
+def _delete_shortcuts(platform: str = sys.platform) -> list[QKeySequence]:
+    """Return Delete, plus Backspace on macOS (where it is the delete key)."""
+    shortcuts = [QKeySequence(Qt.Key.Key_Delete)]
+    if platform == "darwin":
+        shortcuts.append(QKeySequence(Qt.Key.Key_Backspace))
+    return shortcuts
 
 
 class MainWindow(QWidget):
@@ -58,6 +67,11 @@ class MainWindow(QWidget):
         self.undo_action.triggered.connect(self.controller.undo)
         self.undo_button.clicked.connect(self.undo_action.trigger)
         self.delete_button.clicked.connect(self._on_delete_clicked)
+        self.delete_action = QAction("Delete", self.list_view)
+        self.delete_action.setShortcuts(_delete_shortcuts())
+        self.delete_action.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self.delete_action.triggered.connect(self._on_delete_key)
+        self.list_view.addAction(self.delete_action)
         self.clear_completed_button.clicked.connect(self.controller.clear_completed)
         self.day_start_edit = QTimeEdit()
         self.day_start_edit.setDisplayFormat("HH:mm")
@@ -109,9 +123,18 @@ class MainWindow(QWidget):
         """Edit the currently selected row, if any."""
         self.open_edit_form(self.list_view.currentIndex())
 
+    def _on_delete_key(self) -> None:
+        """Delete the first selected row; a merely current row is not a selection."""
+        selected = self.list_view.selectionModel().selectedIndexes()
+        if selected:
+            self._delete_at(selected[0])
+
     def _on_delete_clicked(self) -> None:
         """Delete the currently selected row, if any."""
-        index = self.list_view.currentIndex()
+        self._delete_at(self.list_view.currentIndex())
+
+    def _delete_at(self, index: QModelIndex) -> None:
+        """Delete the task at `index`, closing the edit form if its task is gone."""
         if not index.isValid():
             return
         self.message_label.clear()

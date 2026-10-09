@@ -29,6 +29,7 @@ class TaskForm(QWidget):
         for widget in (self.title_edit, self.start_edit, self.end_edit, self.confirm_button):
             layout.addWidget(widget)
         self.confirm_button.clicked.connect(self.confirm)
+        self.title_edit.returnPressed.connect(self.confirm)
 
     def open_with(self, title: str, start: datetime, end: datetime) -> None:
         """Fill the fields, show the form, and focus the title."""
