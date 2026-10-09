@@ -143,4 +143,4 @@ See [`CHANGELOG.md`](CHANGELOG.md) for what has changed.
 
 ## License
 
-MIT
+todo-qt is released under the MIT License. See [`LICENSE`](LICENSE).
