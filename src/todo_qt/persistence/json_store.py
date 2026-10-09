@@ -1,12 +1,13 @@
 """JSON-file implementation of the plan store port."""
 
+import contextlib
 import os
 from datetime import datetime
 from pathlib import Path
 from typing import TextIO
 
 from todo_qt.persistence import codec
-from todo_qt.services import Clock, PlanSnapshot
+from todo_qt.services import Clock, PlanSnapshot, StoreWriteError
 
 FILE_NAME = "tasks.json"
 
@@ -28,12 +29,39 @@ class JsonPlanStore:
         return codec.decode(text)
 
     def save(self, snapshot: PlanSnapshot) -> None:
-        """Persist the snapshot through a temp file replaced over the data file."""
-        _make_private_dirs(self._path.parent)
+        """Atomically persist the snapshot, raising StoreWriteError on any failure."""
         temp = self._path.with_name(f"{FILE_NAME}.{os.getpid()}.tmp")
+        try:
+            _make_private_dirs(self._path.parent)
+            _write_atomically(temp, self._path, codec.encode(snapshot))
+        except OSError as error:
+            raise StoreWriteError(self._path, str(error)) from error
+
+
+def _write_atomically(temp: Path, target: Path, text: str) -> None:
+    """Write `text` to `temp`, fsync it, and replace `target`; clean up on failure."""
+    try:
         with _create_private_file(temp) as file:
-            file.write(codec.encode(snapshot))
-        os.replace(temp, self._path)
+            file.write(text)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temp, target)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            temp.unlink()
+        raise
+    _fsync_directory(target.parent)
+
+
+def _fsync_directory(directory: Path) -> None:
+    """Best-effort fsync of `directory` so the rename is durable (unsupported on some OSes)."""
+    # Errors are deliberately ignored: the replace already succeeded (ADR-0004).
+    with contextlib.suppress(OSError):
+        fd = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
 
 
 def _make_private_dirs(directory: Path) -> None:
@@ -56,5 +84,9 @@ def _create_private_file(path: Path) -> TextIO:
     except FileExistsError:
         path.unlink()
         fd = os.open(path, flags, 0o600)
-    os.fchmod(fd, 0o600)
-    return os.fdopen(fd, "w", encoding="utf-8")
+    try:
+        os.fchmod(fd, 0o600)
+        return os.fdopen(fd, "w", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
