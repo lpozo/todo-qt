@@ -1,9 +1,16 @@
 """List model exposing the plan's tasks to Qt views."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
-from PySide6.QtCore import QAbstractListModel, QModelIndex, QPersistentModelIndex, Qt
+from PySide6.QtCore import (
+    QAbstractListModel,
+    QByteArray,
+    QMimeData,
+    QModelIndex,
+    QPersistentModelIndex,
+    Qt,
+)
 from PySide6.QtGui import QBrush, QColor, QFont
 
 from todo_qt.domain import TaskId
@@ -20,17 +27,37 @@ OVERDUE_ROLE: int = Qt.ItemDataRole.UserRole + 2
 
 _OVERDUE_BRUSH = QBrush(QColor(255, 200, 200))
 
+TASK_MIME_TYPE = "application/x-todo-qt-task-id"
+"""Mime type carrying the id of the dragged task."""
+
+
+def final_index(old: int, drop_row: int, size: int) -> int:
+    """Convert a drop insertion point (taken before removal) to the final index.
+
+    `drop_row` -1 means append.
+    """
+    if drop_row == -1:
+        return size - 1
+    return drop_row - 1 if drop_row > old else drop_row
+
 
 class TaskListModel(QAbstractListModel):
     """Read-only list model backed by a PlanService."""
 
     def __init__(
-        self, service: PlanService, set_done: Callable[[TaskId, bool], bool] | None = None
+        self,
+        service: PlanService,
+        set_done: Callable[[TaskId, bool], bool] | None = None,
+        move: Callable[[TaskId, int], bool] | None = None,
     ) -> None:
-        """Create the model over the service; `set_done` handles check-state edits."""
+        """Create the model over the service.
+
+        `set_done` handles check-state edits and `move` handles drops.
+        """
         super().__init__()
         self._service = service
         self._set_done = set_done
+        self._move = move
         self._overdue: frozenset[TaskId] = service.overdue_ids()
 
     def rowCount(  # noqa: N802
@@ -71,9 +98,58 @@ class TaskListModel(QAbstractListModel):
         return None
 
     def flags(self, index: QModelIndex | QPersistentModelIndex) -> Qt.ItemFlag:
-        """Make rows checkable so the done state can be toggled."""
+        """Make rows checkable and draggable; only the root accepts drops."""
         base = super().flags(index)
-        return base | Qt.ItemFlag.ItemIsUserCheckable if index.isValid() else base
+        if index.isValid():
+            return base | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsDragEnabled
+        return base | Qt.ItemFlag.ItemIsDropEnabled
+
+    def supportedDropActions(self) -> Qt.DropAction:  # noqa: N802
+        """Only moving is supported."""
+        return Qt.DropAction.MoveAction
+
+    def mimeTypes(self) -> list[str]:  # noqa: N802
+        """Return the mime type carrying a task id."""
+        return [TASK_MIME_TYPE]
+
+    def mimeData(  # noqa: N802
+        self, indexes: Sequence[QModelIndex]
+    ) -> QMimeData:
+        """Carry the id of the first dragged task."""
+        data = QMimeData()
+        # Single selection: only the first valid index is carried.
+        for index in indexes:
+            if index.isValid() and 0 <= index.row() < self.rowCount():
+                task_id = self._service.plan.tasks[index.row()].id
+                data.setData(TASK_MIME_TYPE, QByteArray(task_id.encode()))
+                break
+        return data
+
+    def dropMimeData(  # noqa: N802
+        self,
+        data: QMimeData,
+        action: Qt.DropAction,
+        row: int,
+        column: int,
+        parent: QModelIndex | QPersistentModelIndex,
+    ) -> bool:
+        """Move the dragged task to the drop point through the controller."""
+        if (
+            self._move is None
+            or action != Qt.DropAction.MoveAction
+            or parent.isValid()
+            or not data.hasFormat(TASK_MIME_TYPE)
+        ):
+            return False
+        try:
+            task_id = TaskId(bytes(data.data(TASK_MIME_TYPE).data()).decode())
+        except UnicodeDecodeError:
+            return False
+        tasks = self._service.plan.tasks
+        old = next((i for i, task in enumerate(tasks) if task.id == task_id), None)
+        if old is None:
+            return False
+        return self._move(task_id, final_index(old, row, len(tasks)))
 
     def setData(  # noqa: N802
         self,

@@ -66,6 +66,10 @@ class UiController:
 
         return self._run(command)
 
+    def move_task(self, task_id: TaskId, to_index: int) -> bool:
+        """Move a task to its final index; return False (after notifying) if rejected."""
+        return self._run(lambda: self._service.move_task(task_id, to_index))
+
     def set_done(self, task_id: TaskId, done: bool) -> bool:
         """Mark a task done or open; return False (after notifying) if rejected."""
         return self._run(lambda: self._service.set_done(task_id, done))

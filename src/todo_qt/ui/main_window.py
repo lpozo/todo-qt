@@ -5,6 +5,7 @@ from datetime import datetime
 from PySide6.QtCore import QModelIndex, Qt, QTime, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QLabel,
     QListView,
     QPushButton,
@@ -39,9 +40,14 @@ class MainWindow(QWidget):
         self.add_form = TaskForm()
         self.add_form.hide()
         self.add_form.submitted.connect(self._on_add_submitted)
-        self.model = TaskListModel(service, self.controller.set_done)
+        self.model = TaskListModel(
+            service, self.controller.set_done, move=self.controller.move_task
+        )
         self.list_view = QListView()
         self.list_view.setModel(self.model)
+        self.list_view.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.list_view.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.list_view.setDragEnabled(True)
         self.delete_button = QPushButton("Delete")
         self.clear_completed_button = QPushButton("Clear completed")
         self.undo_action = QAction("Undo", self)
