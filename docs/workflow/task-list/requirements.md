@@ -59,9 +59,13 @@ one saved time of day (default 09:00) at which the first task of a re-chained ti
 - [Must] **Given** tasks A 09:00–10:00, B 10:00–11:30, C 14:00–14:30 in that order, **When**
   the user drags C between A and B, **Then** the order is A, C, B with A 09:00–10:00,
   C 10:00–10:30, B 10:30–12:00.
-- [Must] **Given** a list of tasks, **When** the user drags a task to position *i* > 1,
-  **Then** every task from position *i* down keeps its duration and starts at the end of the
-  task above it, and the tasks above position *i* are unchanged.
+- [Must] **Given** a list of tasks, **When** the user drags a task other than the first one to
+  position *i* > 1, **Then** every task from position *i* down keeps its duration and starts at
+  the end of the task above it, and the tasks above position *i* are unchanged.
+- [Must] **Given** the day start is 09:00 and tasks A Fri 09:00–10:00, B Fri 10:30–11:30,
+  C Fri 12:00–13:00, **When** the user drags A below B, **Then** B, the new first task, starts at
+  the day start on its own date, keeping its duration, and every task below re-chains after it:
+  B Fri 09:00–10:00, A Fri 10:00–11:00, C Fri 11:00–12:00.
 - [Must] **Given** the day start is 09:00 and tasks A Fri 10:00–11:00, B Fri 11:00–12:00,
   C Fri 15:00–15:30, **When** the user drags C to the top, **Then** C starts at the day start on
   the date the old first task started on, keeps its duration, and the rest re-chain after it:
