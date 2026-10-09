@@ -1,0 +1,64 @@
+[project]
+name = "todo-qt"
+version = "0.1.0"
+requires-python = ">=3.14"
+description = "A desktop to-do list application built with Qt."
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+todo-qt = "todo_qt.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "pytest>=8",
+  "pytest-cov>=5",
+  "pytest-xdist>=3",
+  "hypothesis>=6",
+  "pre-commit>=3.7",
+  "import-linter>=2",
+  "bandit>=1.7",
+  "pip-audit>=2.7",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "C4", "SIM", "RUF"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+disallow_any_unimported = true
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers --strict-config"
+testpaths = ["tests"]
+xfail_strict = true
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 85  # Enforced by pytest-cov in CI and /verify; adjust per project
+
+[tool.importlinter]
+root_packages = ["todo_qt"]
+include_external_packages = true  # required to forbid third-party imports
+# Contracts are added by the walking-skeleton task, from architecture.md.

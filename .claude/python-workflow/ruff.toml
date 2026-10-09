@@ -1,0 +1,12 @@
+# Ruff settings for the workflow's Python files, and the single copy of this
+# repo's ruff settings (pyproject.toml extends this file).
+#
+# The installer copies it next to the installed hooks and scripts. Ruff uses
+# the nearest config file for each file it checks, so a project's own
+# `ruff check .` checks our files with these rules, which they pass, instead
+# of with the project's.
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = ["E", "F", "I", "B", "UP", "N", "C4", "SIM", "RUF"]

@@ -1,0 +1,57 @@
+# tasks.yaml — output of Phase 5 (Task Definition).
+#
+# Schema:
+#   feature: <kebab-case slug>
+#   tasks:
+#     - id: T-NN-short-name           # unique
+#       description: <one line>
+#       role: implementer | test-writer | reviewer
+#       files_in_scope:               # mechanical allow-list (hooks enforce)
+#         - relative/path/to/file
+#       depends_on: [T-MM-..., ...]   # references other ids
+#       acceptance: <one shell command, exits 0/non-zero>
+#
+# Cardinal rule: no two tasks at the same DAG depth share any file in
+# files_in_scope. If they would, sequence them with depends_on, or split the
+# file. Never let parallel tasks contend.
+#
+# Shared files go to the skeleton task, T-00, which runs first: every new
+# dependency the plan needs (pyproject.toml and uv.lock, always together),
+# shared test fixtures (conftest.py), and package __init__.py files. A later
+# task that needs one depends on the last task that changed it. No task owns
+# CHANGELOG.md: /verify writes it.
+
+feature: <slug>
+
+tasks:
+  - id: T-00-skeleton
+    description: Walking skeleton — dependencies, package init, smoke test, import-linter contracts
+    role: implementer
+    files_in_scope:
+      - pyproject.toml
+      - uv.lock
+      - tests/conftest.py
+      - src/<package>/<feature>/__init__.py
+      - tests/<feature>/__init__.py
+      - src/<package>/<feature>/domain.py
+      - tests/<feature>/test_smoke.py
+    depends_on: []
+    acceptance: pytest tests/<feature>/test_smoke.py -x
+
+  - id: T-01-domain-create
+    description: Domain `create()` implementing spec example 1
+    role: implementer
+    files_in_scope:
+      - tests/<feature>/test_domain_create.py
+      - src/<package>/<feature>/domain_create.py
+    depends_on: [T-00-skeleton]
+    acceptance: pytest tests/<feature>/test_domain_create.py -x
+
+  - id: T-02-repo
+    description: Repository adapter for create/get/list
+    role: implementer
+    files_in_scope:
+      - tests/<feature>/test_repository.py
+      - src/<package>/<feature>/repository.py
+    depends_on: [T-00-skeleton]
+    acceptance: pytest tests/<feature>/test_repository.py -x

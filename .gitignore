@@ -1,0 +1,38 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+coverage.json
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# Build output
+dist/
+build/
+*.egg-info/
+
+# Secrets and local environment
+.env
+.envrc
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+
+# Per-task ephemeral state and task worktrees (written by /orchestrate)
+.workflow/current-task.yaml
+.worktrees/
+uv.lock.bak
+mutants/

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/workflow/tasks.schema.json",
+  "title": "tasks.yaml — Phase 5 output (Task Definition)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["feature", "tasks"],
+  "properties": {
+    "feature": {
+      "type": "string",
+      "description": "Kebab-case feature slug; matches docs/workflow/<slug>/.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+  "$defs": {
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "role", "files_in_scope", "depends_on", "acceptance"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique task id, e.g. T-00-skeleton, T-01-domain-create.",
+          "pattern": "^T-\\d{2,}-[a-z0-9-]+$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "role": {
+          "type": "string",
+          "enum": ["implementer", "test-writer", "reviewer"],
+          "description": "Subagent role. Default = implementer (full TDD cycle). test-writer + implementer is an optional split for high-stakes code where red and green should be authored independently."
+        },
+        "files_in_scope": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string" },
+          "description": "Allow-list of paths the task may edit. Enforced by the enforce_allowlist.py hook at runtime."
+        },
+        "depends_on": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^T-\\d{2,}-[a-z0-9-]+$" },
+          "description": "Other task ids that must finish (acceptance green) before this task starts."
+        },
+        "acceptance": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Single shell command that exits 0 if and only if the task is done."
+        }
+      }
+    }
+  }
+}

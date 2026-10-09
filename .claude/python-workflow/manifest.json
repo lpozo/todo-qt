@@ -1,0 +1,91 @@
+{
+  "name": "python-workflow",
+  "version": "0.1.0",
+  "scope": "project",
+  "settings_file": "settings.json",
+  "created_settings": true,
+  "files": [
+    "agents/architect.md",
+    "agents/implementer.md",
+    "agents/planner.md",
+    "agents/researcher.md",
+    "agents/reviewer.md",
+    "agents/spec-author.md",
+    "agents/task-cutter.md",
+    "agents/test-writer.md",
+    "python-workflow/hooks/enforce_allowlist.py",
+    "python-workflow/hooks/format_python.py",
+    "python-workflow/hooks/stop_gate.py",
+    "python-workflow/hooks/workflow_task.py",
+    "python-workflow/ruff.toml",
+    "python-workflow/scripts/doctor.py",
+    "python-workflow/scripts/validate_tasks.py",
+    "python-workflow/templates/architecture.md",
+    "python-workflow/templates/brief.md",
+    "python-workflow/templates/impl-plan.md",
+    "python-workflow/templates/requirements.md",
+    "python-workflow/templates/spec.md",
+    "python-workflow/templates/tasks.schema.json",
+    "python-workflow/templates/tasks.yaml",
+    "python-workflow/templates/workflow-rules.md",
+    "rules/python-workflow.md",
+    "skills/arch-plan/SKILL.md",
+    "skills/env-bootstrap/SKILL.md",
+    "skills/env-ci-setup/SKILL.md",
+    "skills/env-doctor/SKILL.md",
+    "skills/impl-plan/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+    "skills/quick-change/SKILL.md",
+    "skills/req-research/SKILL.md",
+    "skills/spec-write/SKILL.md",
+    "skills/task-define/SKILL.md",
+    "skills/tdd-cycle/SKILL.md",
+    "skills/verify/SKILL.md"
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --script \"$CLAUDE_PROJECT_DIR/.claude/python-workflow/hooks/enforce_allowlist.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --script \"$CLAUDE_PROJECT_DIR/.claude/python-workflow/hooks/format_python.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --script \"$CLAUDE_PROJECT_DIR/.claude/python-workflow/hooks/stop_gate.py\"",
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --script \"$CLAUDE_PROJECT_DIR/.claude/python-workflow/hooks/stop_gate.py\"",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
+}

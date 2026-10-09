@@ -1,0 +1,48 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --script \"$CLAUDE_PROJECT_DIR/.claude/python-workflow/hooks/enforce_allowlist.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --script \"$CLAUDE_PROJECT_DIR/.claude/python-workflow/hooks/format_python.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --script \"$CLAUDE_PROJECT_DIR/.claude/python-workflow/hooks/stop_gate.py\"",
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --script \"$CLAUDE_PROJECT_DIR/.claude/python-workflow/hooks/stop_gate.py\"",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
+}

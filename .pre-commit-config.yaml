@@ -1,0 +1,50 @@
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+default_stages: [pre-commit]
+
+repos:
+  # Python tools run from the project's own environment, at the versions in
+  # uv.lock: the same as CI, with the project's dependencies importable.
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --frozen ruff check --fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --frozen ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+      - id: bandit
+        name: bandit
+        entry: uv run --frozen bandit -q
+        language: system
+        types: [python]
+        files: ^src/  # Tests use assert by design
+      - id: mypy
+        name: mypy
+        entry: uv run --frozen mypy src
+        language: system
+        pass_filenames: false
+        types_or: [python, pyi]
+        stages: [pre-push]
+      - id: pytest
+        name: pytest
+        entry: uv run --frozen pytest -q -x
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0  # Replaced by `pre-commit autoupdate` below
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0  # Replaced by `pre-commit autoupdate` below
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, refactor, perf, docs, test, chore, build, ci, style, revert]
