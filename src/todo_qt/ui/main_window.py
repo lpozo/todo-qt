@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from PySide6.QtCore import QTime
+from PySide6.QtCore import QTime, QTimer
 from PySide6.QtWidgets import (
     QLabel,
     QListView,
@@ -17,6 +17,9 @@ from todo_qt.ui.controller import Notifier, UiController
 from todo_qt.ui.messages import startup_message
 from todo_qt.ui.task_form import TaskForm
 from todo_qt.ui.task_model import TaskListModel
+
+OVERDUE_REFRESH_MS = 15_000
+"""Interval of the overdue re-evaluation timer."""
 
 
 class MainWindow(QWidget):
@@ -33,13 +36,17 @@ class MainWindow(QWidget):
         self.add_form = TaskForm()
         self.add_form.hide()
         self.add_form.submitted.connect(self._on_add_submitted)
-        self.model = TaskListModel(service)
+        self.model = TaskListModel(service, self.controller.set_done)
         self.list_view = QListView()
         self.list_view.setModel(self.model)
         self.day_start_edit = QTimeEdit()
         self.day_start_edit.setReadOnly(True)
         self.day_start_edit.setDisplayFormat("HH:mm")
         self.refresh()
+        self.overdue_timer = QTimer(self)
+        self.overdue_timer.setInterval(OVERDUE_REFRESH_MS)
+        self.overdue_timer.timeout.connect(self.refresh_overdue)
+        self.overdue_timer.start()
         self.add_button = QPushButton("Add task")
         layout = QVBoxLayout(self)
         layout.addWidget(self.day_start_edit)
@@ -72,3 +79,7 @@ class MainWindow(QWidget):
         self.model.refresh()
         day_start = self._service.plan.day_start
         self.day_start_edit.setTime(QTime(day_start.hour, day_start.minute))
+
+    def refresh_overdue(self) -> None:
+        """Re-evaluate overdue tasks against the clock."""
+        self.model.refresh_overdue()
