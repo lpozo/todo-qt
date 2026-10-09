@@ -324,14 +324,16 @@ tasks:
 
   # Plan slice(s): 16
   - id: T-21-ui-edit-form
-    description: "Slice 16: edit mode of TaskForm wired in MainWindow"
+    description: "Slice 16: edit mode of TaskForm wired in MainWindow, via one UiController.edit_task command"
     role: implementer
     files_in_scope:
       - src/todo_qt/ui/task_form.py
       - src/todo_qt/ui/main_window.py
+      - src/todo_qt/ui/controller.py
       - tests/task_list/test_ui_window_edit.py
-    depends_on: [T-20-ui-done-overdue]
-    acceptance: "uv run pytest -q tests/task_list/test_ui_window_edit.py && uv run mypy src && uv run lint-imports"
+      - tests/task_list/test_ui_controller_edit_task.py
+    depends_on: [T-20-ui-done-overdue, T-19-controller-edit]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_window_edit.py tests/task_list/test_ui_controller_edit_task.py && uv run mypy src && uv run lint-imports"
 
   # Plan slice(s): 17
   #   test_delete_removes_task_without_touching_others
