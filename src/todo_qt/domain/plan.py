@@ -1,6 +1,6 @@
 """The Plan aggregate."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import time
 
 from todo_qt.domain.errors import DuplicateTaskIdError, TaskNotFoundError
@@ -39,3 +39,20 @@ class Plan:
         """Return a new plan with a not-done task appended at the bottom."""
         task = Task(task_id, normalize_title(title), slot, done=False)
         return Plan((*self.tasks, task), self.day_start)
+
+    def _with_task(self, task: Task) -> Plan:
+        index = self.index_of(task.id)
+        return Plan((*self.tasks[:index], task, *self.tasks[index + 1 :]), self.day_start)
+
+    def edit_title(self, task_id: TaskId, title: str) -> Plan:
+        """Return a new plan with the task's title replaced."""
+        task = self.get(task_id)
+        return self._with_task(replace(task, title=normalize_title(title)))
+
+    def reschedule(self, task_id: TaskId, slot: TimeSlot) -> Plan:
+        """Return a new plan with the task's slot replaced."""
+        return self._with_task(replace(self.get(task_id), slot=slot))
+
+    def set_done(self, task_id: TaskId, done: bool) -> Plan:
+        """Return a new plan with the task's done flag set."""
+        return self._with_task(replace(self.get(task_id), done=done))
