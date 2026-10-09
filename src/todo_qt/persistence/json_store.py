@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TextIO
 
 from todo_qt.persistence import codec
-from todo_qt.services import Clock, PlanSnapshot, StoreWriteError
+from todo_qt.services import Clock, PlanSnapshot, StoreCorruptError, StoreWriteError
 
 FILE_NAME = "tasks.json"
 
@@ -19,23 +19,49 @@ class JsonPlanStore:
         """Remember the data directory and the clock used to name .corrupt files."""
         self._path = directory / FILE_NAME
         self._now = now or datetime.now
+        self._corrupt = False
 
     def load(self) -> PlanSnapshot | None:
         """Return the saved plan, or None if nothing was ever saved."""
         try:
             text = self._path.read_text(encoding="utf-8")
         except FileNotFoundError:
+            self._corrupt = False
             return None
-        return codec.decode(text)
+        except (OSError, UnicodeDecodeError) as error:
+            self._corrupt = True
+            raise StoreCorruptError(self._path, f"cannot read: {error}") from error
+        try:
+            plan = codec.decode(text)
+        except codec.CodecError as error:
+            self._corrupt = True
+            raise StoreCorruptError(self._path, str(error)) from error
+        self._corrupt = False
+        return plan
 
     def save(self, snapshot: PlanSnapshot) -> None:
         """Atomically persist the snapshot, raising StoreWriteError on any failure."""
         temp = self._path.with_name(f"{FILE_NAME}.{os.getpid()}.tmp")
         try:
             _make_private_dirs(self._path.parent)
+            if self._corrupt:
+                self._preserve_corrupt_file()
             _write_atomically(temp, self._path, codec.encode(snapshot))
+            self._corrupt = False
         except OSError as error:
             raise StoreWriteError(self._path, str(error)) from error
+
+    def _preserve_corrupt_file(self) -> None:
+        """Rename the unreadable file aside to tasks.<timestamp>.corrupt."""
+        stamp = self._now().strftime("%Y%m%d-%H%M%S")
+        aside = self._path.with_name(f"tasks.{stamp}.corrupt")
+        counter = 0
+        while aside.exists() or aside.is_symlink():
+            counter += 1
+            aside = self._path.with_name(f"tasks.{stamp}.{counter}.corrupt")
+        # FileNotFoundError: the file vanished since load, so there is nothing to preserve.
+        with contextlib.suppress(FileNotFoundError):
+            os.rename(self._path, aside)
 
 
 def _write_atomically(temp: Path, target: Path, text: str) -> None:
