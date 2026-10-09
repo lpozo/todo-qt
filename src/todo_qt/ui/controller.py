@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from datetime import datetime
 
-from todo_qt.domain import DomainError, TaskId, TimeSlot, normalize_title
+from todo_qt.domain import DomainError, TaskId, TaskNotFoundError, TimeSlot, normalize_title
 from todo_qt.services import ChangeResult, PlanService
 from todo_qt.ui.messages import message_for, save_failure_message
 
@@ -36,6 +36,35 @@ class UiController:
     def reschedule(self, task_id: TaskId, start: datetime, end: datetime) -> bool:
         """Move a task to a new slot; return False (after notifying) if rejected."""
         return self._run(lambda: self._service.reschedule(task_id, TimeSlot(start, end)))
+
+    def edit_task(self, task_id: TaskId, title: str, start: datetime, end: datetime) -> bool:
+        """Change a task's title and slot; return False (after notifying) if rejected.
+
+        Both parts are validated before either is applied (the title message wins),
+        and only the parts that changed are sent to the service. The two step results
+        are merged into one: `changed` if either changed, and at most one save-failure
+        message, where the slot step's error wins if both saves fail.
+        """
+
+        def command() -> ChangeResult:
+            clean_title = normalize_title(title)
+            slot = TimeSlot(start, end)
+            task = next((t for t in self._service.plan.tasks if t.id == task_id), None)
+            if task is None:
+                raise TaskNotFoundError(task_id)
+            result = ChangeResult(self._service.plan, changed=False)
+            if clean_title != task.title:
+                result = self._service.edit_title(task_id, clean_title)
+            if slot != task.slot:
+                moved = self._service.reschedule(task_id, slot)
+                result = ChangeResult(
+                    moved.plan,
+                    changed=result.changed or moved.changed,
+                    save_error=moved.save_error or result.save_error,
+                )
+            return result
+
+        return self._run(command)
 
     def set_done(self, task_id: TaskId, done: bool) -> bool:
         """Mark a task done or open; return False (after notifying) if rejected."""
