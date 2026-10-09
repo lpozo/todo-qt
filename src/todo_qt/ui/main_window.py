@@ -1,7 +1,10 @@
 """Main application window."""
 
+from datetime import datetime
+
 from PySide6.QtCore import QTime
 from PySide6.QtWidgets import (
+    QLabel,
     QListView,
     QPushButton,
     QTimeEdit,
@@ -10,17 +13,24 @@ from PySide6.QtWidgets import (
 )
 
 from todo_qt.services import PlanService
+from todo_qt.ui.controller import Notifier, UiController
+from todo_qt.ui.task_form import TaskForm
 from todo_qt.ui.task_model import TaskListModel
 
 
 class MainWindow(QWidget):
-    """Window showing the task list and an inert Add task button."""
+    """Window showing the task list, a message label, and an inline add form."""
 
-    def __init__(self, service: PlanService) -> None:
-        """Build the window for the given service."""
+    def __init__(self, service: PlanService, notifier: Notifier | None = None) -> None:
+        """Build the window; messages go to `notifier` or the message label."""
         super().__init__()
         self.setWindowTitle("Todo")
         self._service = service
+        self.message_label = QLabel()
+        self.controller = UiController(service, notifier or self.show_message, self.refresh)
+        self.add_form = TaskForm()
+        self.add_form.hide()
+        self.add_form.submitted.connect(self._on_add_submitted)
         self.model = TaskListModel(service)
         self.list_view = QListView()
         self.list_view.setModel(self.model)
@@ -32,7 +42,26 @@ class MainWindow(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(self.day_start_edit)
         layout.addWidget(self.list_view)
+        layout.addWidget(self.message_label)
+        layout.addWidget(self.add_form)
         layout.addWidget(self.add_button)
+        self.add_button.clicked.connect(self.open_add_form)
+
+    def show_message(self, text: str) -> None:
+        """Show a message in the window's message label."""
+        self.message_label.setText(text)
+
+    def open_add_form(self) -> None:
+        """Show the add form pre-filled with the default slot."""
+        self.message_label.clear()
+        slot = self._service.default_slot()
+        self.add_form.open_with("", slot.start, slot.end)
+
+    def _on_add_submitted(self, title: str, start: datetime, end: datetime) -> None:
+        """Add the task; close the form only when it was accepted."""
+        self.message_label.clear()
+        if self.controller.add_task(title, start, end):
+            self.add_form.hide()
 
     def refresh(self) -> None:
         """Re-read the plan into the model and the day start control."""
