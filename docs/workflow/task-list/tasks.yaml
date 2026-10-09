@@ -51,9 +51,10 @@ tasks:
   #   test_service_starts_empty_on_corrupt_store_without_saving
   #   test_service_does_not_save_during_construction
   - id: T-03-test-fakes-startup
-    description: "Slice 0b (fakes) + service startup tests: FakeStore, RecordingStore, clock, ids, builders; startup examples"
+    description: "Slice 0b (fakes + fakes-based fixtures in tests/task_list/conftest.py: clock, new_id, fake_store, recording_store, make_service) + service startup tests"
     role: implementer
     files_in_scope:
+      - tests/task_list/conftest.py
       - tests/task_list/fakes.py
       - tests/task_list/test_service_startup.py
     depends_on: [T-02-services-skeleton]
