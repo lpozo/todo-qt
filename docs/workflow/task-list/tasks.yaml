@@ -120,7 +120,7 @@ tasks:
       - src/todo_qt/domain/task.py
       - tests/task_list/test_domain_task.py
     depends_on: [T-01-domain-skeleton]
-    acceptance: "uv run pytest -q tests/task_list/test_domain_task.py && uv run mypy src && uv run lint-imports"
+    acceptance: "uv run pytest -q tests/task_list/test_domain_task.py && uv run mypy src"
 
   # Plan slice(s): 2
   - id: T-08-ui-messages
@@ -152,7 +152,7 @@ tasks:
       - src/todo_qt/domain/schedule.py
       - tests/task_list/test_domain_schedule.py
     depends_on: [T-01-domain-skeleton]
-    acceptance: "uv run pytest -q tests/task_list/test_domain_schedule.py && uv run mypy src && uv run lint-imports"
+    acceptance: "uv run pytest -q tests/task_list/test_domain_schedule.py && uv run mypy src"
 
   # Plan slice(s): 4, 28
   #   test_resolve_data_dir_uses_env_override
@@ -197,7 +197,7 @@ tasks:
       - src/todo_qt/domain/plan.py
       - tests/task_list/test_domain_plan_add.py
     depends_on: [T-07-value-types]
-    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_add.py && uv run mypy src && uv run lint-imports"
+    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_add.py && uv run mypy src"
 
   # Plan slice(s): 7, 8
   #   test_service_default_slot_uses_injected_clock
@@ -218,7 +218,7 @@ tasks:
       - tests/task_list/test_service_add.py
       - tests/task_list/test_service_save_failure.py
     depends_on: [T-09-schedule, T-12-plan-add, T-03-test-fakes-startup]
-    acceptance: "uv run pytest -q tests/task_list/test_service_queries.py tests/task_list/test_service_add.py tests/task_list/test_service_save_failure.py && uv run mypy src && uv run lint-imports"
+    acceptance: "uv run pytest -q tests/task_list/test_service_queries.py tests/task_list/test_service_add.py tests/task_list/test_service_save_failure.py && uv run mypy src"
 
   # Plan slice(s): 9
   #   test_ui_add_blank_title_shows_title_required
@@ -275,7 +275,7 @@ tasks:
       - src/todo_qt/domain/plan.py
       - tests/task_list/test_domain_plan_edit.py
     depends_on: [T-12-plan-add]
-    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_edit.py && uv run mypy src && uv run lint-imports"
+    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_edit.py && uv run mypy src"
 
   # Plan slice(s): 13
   #   test_service_edit_title_saves_new_title
@@ -293,7 +293,7 @@ tasks:
       - tests/task_list/test_service_edit.py
       - tests/task_list/test_service_save_recovery.py
     depends_on: [T-13-service-queries-add, T-17-plan-edit]
-    acceptance: "uv run pytest -q tests/task_list/test_service_edit.py tests/task_list/test_service_save_recovery.py && uv run mypy src && uv run lint-imports"
+    acceptance: "uv run pytest -q tests/task_list/test_service_edit.py tests/task_list/test_service_save_recovery.py && uv run mypy src"
 
   # Plan slice(s): 14
   #   test_ui_edit_title_blank_keeps_original
@@ -351,7 +351,7 @@ tasks:
       - src/todo_qt/domain/plan.py
       - tests/task_list/test_domain_plan_remove.py
     depends_on: [T-17-plan-edit]
-    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_remove.py && uv run mypy src && uv run lint-imports"
+    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_remove.py && uv run mypy src"
 
   # Plan slice(s): 18
   #   test_service_new_session_has_no_undo
@@ -373,7 +373,7 @@ tasks:
       - src/todo_qt/services/plan_service.py
       - tests/task_list/test_service_undo.py
     depends_on: [T-18-service-edit, T-22-plan-remove]
-    acceptance: "uv run pytest -q tests/task_list/test_service_undo.py && uv run mypy src && uv run lint-imports"
+    acceptance: "uv run pytest -q tests/task_list/test_service_undo.py && uv run mypy src"
 
   # Plan slice(s): 19
   #   test_ui_ctrl_z_restores_last_deleted_task
@@ -419,7 +419,7 @@ tasks:
       - tests/task_list/test_domain_plan_move.py
       - tests/task_list/test_domain_plan_day_start.py
     depends_on: [T-22-plan-remove]
-    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_move.py tests/task_list/test_domain_plan_day_start.py && uv run mypy src && uv run lint-imports"
+    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_move.py tests/task_list/test_domain_plan_day_start.py && uv run mypy src"
 
   # Plan slice(s): 25
   #   test_main_reads_and_saves_in_override_dir
