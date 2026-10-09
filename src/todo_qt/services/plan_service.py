@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime, time
 
-from todo_qt.domain import Plan, RemovedTasks, TaskId, TimeSlot
+from todo_qt.domain import Plan, RemovedTasks, TaskId, TimeSlot, default_slot, is_overdue
 from todo_qt.services.errors import StoreCorruptError, StoreWriteError
 from todo_qt.services.ports import Clock, IdFactory, PlanStore
 
@@ -62,19 +62,33 @@ class PlanService:
 
     def default_slot(self) -> TimeSlot:
         """Return the prefilled slot for a new task."""
-        raise NotImplementedError
+        return default_slot(self._clock())
 
     def is_overdue(self, task_id: TaskId) -> bool:
         """Return whether the task is overdue now."""
-        raise NotImplementedError
+        return is_overdue(self._plan.get(task_id), self._clock())
 
     def overdue_ids(self) -> frozenset[TaskId]:
         """Return the ids of all overdue tasks."""
-        raise NotImplementedError
+        now = self._clock()
+        return frozenset(task.id for task in self._plan.tasks if is_overdue(task, now))
 
     def add_task(self, title: str, slot: TimeSlot) -> ChangeResult:
         """Append a task."""
-        raise NotImplementedError
+        task_id = self._new_id()
+        return self._commit(self._plan.add(task_id, title, slot), task_id=task_id)
+
+    def _commit(self, new_plan: Plan, *, task_id: TaskId | None = None) -> ChangeResult:
+        """Adopt new_plan, save it if it changed, and report any write failure."""
+        changed = new_plan != self._plan
+        save_error: StoreWriteError | None = None
+        if changed:
+            self._plan = new_plan
+            try:
+                self._store.save(new_plan)
+            except StoreWriteError as error:
+                save_error = error
+        return ChangeResult(self._plan, changed, save_error, task_id)
 
     def edit_title(self, task_id: TaskId, title: str) -> ChangeResult:
         """Change a task's title."""
