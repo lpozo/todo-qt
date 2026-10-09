@@ -70,6 +70,18 @@ class UiController:
         """Mark a task done or open; return False (after notifying) if rejected."""
         return self._run(lambda: self._service.set_done(task_id, done))
 
+    def delete_task(self, task_id: TaskId) -> bool:
+        """Delete a task (undoable); return False (after notifying) if rejected."""
+        return self._run(lambda: self._service.delete_task(task_id))
+
+    def clear_completed(self) -> bool:
+        """Delete all done tasks (undoable); a no-op when none are done."""
+        return self._run(self._service.clear_completed)
+
+    def undo(self) -> bool:
+        """Restore the last removed tasks; a no-op when there is nothing to undo."""
+        return self._run(self._service.undo)
+
     def _run(self, command: Callable[[], ChangeResult]) -> bool:
         """Run a command; notify on errors, refresh on change.
 

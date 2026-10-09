@@ -2,7 +2,8 @@
 
 from datetime import datetime
 
-from PySide6.QtCore import QModelIndex, QTime, QTimer
+from PySide6.QtCore import QModelIndex, Qt, QTime, QTimer
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QLabel,
     QListView,
@@ -41,6 +42,17 @@ class MainWindow(QWidget):
         self.model = TaskListModel(service, self.controller.set_done)
         self.list_view = QListView()
         self.list_view.setModel(self.model)
+        self.delete_button = QPushButton("Delete")
+        self.clear_completed_button = QPushButton("Clear completed")
+        self.undo_action = QAction("Undo", self)
+        self.undo_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Undo))
+        self.undo_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        self.addAction(self.undo_action)
+        self.undo_button = QPushButton("Undo")
+        self.undo_action.triggered.connect(self.controller.undo)
+        self.undo_button.clicked.connect(self.undo_action.trigger)
+        self.delete_button.clicked.connect(self._on_delete_clicked)
+        self.clear_completed_button.clicked.connect(self.controller.clear_completed)
         self.day_start_edit = QTimeEdit()
         self.day_start_edit.setReadOnly(True)
         self.day_start_edit.setDisplayFormat("HH:mm")
@@ -58,6 +70,9 @@ class MainWindow(QWidget):
         layout.addWidget(self.add_form)
         layout.addWidget(self.add_button)
         layout.addWidget(self.edit_button)
+        layout.addWidget(self.delete_button)
+        layout.addWidget(self.undo_button)
+        layout.addWidget(self.clear_completed_button)
         self.add_button.clicked.connect(self.open_add_form)
         self.edit_button.clicked.connect(self._on_edit_clicked)
         self.list_view.doubleClicked.connect(self.open_edit_form)
@@ -88,6 +103,18 @@ class MainWindow(QWidget):
         """Edit the currently selected row, if any."""
         self.open_edit_form(self.list_view.currentIndex())
 
+    def _on_delete_clicked(self) -> None:
+        """Delete the currently selected row, if any."""
+        index = self.list_view.currentIndex()
+        if not index.isValid():
+            return
+        self.message_label.clear()
+        task_id = self._service.plan.tasks[index.row()].id
+        self.controller.delete_task(task_id)
+        if self._editing_id is not None and not self._has_task(self._editing_id):
+            self.add_form.hide()
+            self._editing_id = None
+
     def _on_add_submitted(self, title: str, start: datetime, end: datetime) -> None:
         """Add the task, or apply the edit in edit mode; close only when accepted."""
         self.message_label.clear()
@@ -108,6 +135,9 @@ class MainWindow(QWidget):
     def refresh(self) -> None:
         """Re-read the plan into the model and the day start control."""
         self.model.refresh()
+        self.clear_completed_button.setEnabled(self._service.can_clear_completed)
+        self.undo_action.setEnabled(self._service.can_undo)
+        self.undo_button.setEnabled(self._service.can_undo)
         day_start = self._service.plan.day_start
         self.day_start_edit.setTime(QTime(day_start.hour, day_start.minute))
 
