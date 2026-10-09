@@ -35,14 +35,34 @@ Each interface section below repeats the signature it specifies.
 
 ```python
 class DomainError(Exception): ...
+
+
 class EmptyTitleError(DomainError): ...
+
+
 class InvalidTimeSlotError(DomainError): ...
+
+
 class EndNotAfterStartError(InvalidTimeSlotError): ...
+
+
 class InvalidDayStartError(DomainError): ...
+
+
 class NaiveDatetimeRequiredError(DomainError, ValueError): ...
-class TaskNotFoundError(DomainError):        task_id: TaskId
-class DuplicateTaskIdError(DomainError):     task_id: TaskId
-class IndexOutOfRangeError(DomainError, IndexError): index: int; size: int
+
+
+class TaskNotFoundError(DomainError):
+    task_id: TaskId
+
+
+class DuplicateTaskIdError(DomainError):
+    task_id: TaskId
+
+
+class IndexOutOfRangeError(DomainError, IndexError):
+    index: int
+    size: int
 ```
 
 | Exception | Raised when |
@@ -305,9 +325,18 @@ hour, plus 1 hour); `end = start + 30 min`. Independent of day start. Crosses mi
 
 ```python
 type PlanSnapshot = Plan
-class StoreError(Exception):   path: Path; reason: str
+
+
+class StoreError(Exception):
+    path: Path
+    reason: str
+
+
 class StoreCorruptError(StoreError): ...
+
+
 class StoreWriteError(StoreError): ...
+
 
 class PlanStore(Protocol):
     def load(self) -> PlanSnapshot | None: ...
@@ -358,8 +387,9 @@ The logical on-disk schema is under "Persisted schema" below.
 ### `PlanService` (`todo_qt.services`)
 
 ```python
-type Clock = Callable[[], datetime]       # returns naive local "now"
-type IdFactory = Callable[[], TaskId]     # returns a fresh, unique id per call
+type Clock = Callable[[], datetime]  # returns naive local "now"
+type IdFactory = Callable[[], TaskId]  # returns a fresh, unique id per call
+
 
 @dataclass(frozen=True, slots=True)
 class ChangeResult:
@@ -367,6 +397,7 @@ class ChangeResult:
     changed: bool
     save_error: StoreWriteError | None = None
     task_id: TaskId | None = None
+
 
 class PlanService:
     def __init__(self, store: PlanStore, clock: Clock, new_id: IdFactory) -> None: ...
@@ -522,7 +553,9 @@ position, or setting the same day start, saves nothing). **Failure modes:** `Tas
 DATA_DIR_ENV_VAR: str = "TODO_QT_DATA_DIR"
 type UiRunner = Callable[[PlanService], int]
 
+
 def resolve_data_dir(environ: Mapping[str, str], default_dir: Path) -> Path: ...
+
 
 def main(
     argv: Sequence[str] | None = None,
@@ -642,29 +675,50 @@ TaskId = NewType("TaskId", str)
 DEFAULT_DAY_START: time = time(9, 0)
 DEFAULT_SLOT_DURATION: timedelta = timedelta(minutes=30)
 
+
 class DomainError(Exception): ...
+
+
 class EmptyTitleError(DomainError): ...
+
+
 class InvalidTimeSlotError(DomainError): ...
+
+
 class EndNotAfterStartError(InvalidTimeSlotError): ...
+
+
 class InvalidDayStartError(DomainError): ...
+
+
 class NaiveDatetimeRequiredError(DomainError, ValueError): ...
+
+
 class TaskNotFoundError(DomainError):
     task_id: TaskId
+
+
 class DuplicateTaskIdError(DomainError):
     task_id: TaskId
+
+
 class IndexOutOfRangeError(DomainError, IndexError):
     index: int
     size: int
 
+
 def normalize_title(raw: str) -> str: ...
+
 
 @dataclass(frozen=True, slots=True)
 class TimeSlot:
     start: datetime
     end: datetime
+
     def __post_init__(self) -> None: ...
     @property
     def duration(self) -> timedelta: ...
+
 
 @dataclass(frozen=True, slots=True)
 class Task:
@@ -672,22 +726,28 @@ class Task:
     title: str
     slot: TimeSlot
     done: bool = False
+
     def __post_init__(self) -> None: ...
+
 
 @dataclass(frozen=True, slots=True)
 class RemovedEntry:
-    index: int          # index in the plan before removal
+    index: int  # index in the plan before removal
     task: Task
+
 
 @dataclass(frozen=True, slots=True)
 class RemovedTasks:
-    entries: tuple[RemovedEntry, ...]   # non-empty, strictly ascending index, index >= 0
-    def __post_init__(self) -> None: ...   # raises ValueError if the invariant is violated
+    entries: tuple[RemovedEntry, ...]  # non-empty, strictly ascending index, index >= 0
+
+    def __post_init__(self) -> None: ...  # raises ValueError if the invariant is violated
+
 
 @dataclass(frozen=True, slots=True)
 class Plan:
     tasks: tuple[Task, ...] = ()
     day_start: time = DEFAULT_DAY_START
+
     def __post_init__(self) -> None: ...
     def index_of(self, task_id: TaskId) -> int: ...
     def get(self, task_id: TaskId) -> Task: ...
@@ -701,8 +761,10 @@ class Plan:
     def move(self, task_id: TaskId, to_index: int) -> Plan: ...
     def set_day_start(self, day_start: time) -> Plan: ...
 
+
 def default_slot(now: datetime) -> TimeSlot: ...
 def is_overdue(task: Task, now: datetime) -> bool: ...
+
 
 # ---- todo_qt.services
 type PlanSnapshot = Plan
@@ -711,15 +773,22 @@ type IdFactory = Callable[[], TaskId]
 # SCHEMA_VERSION (= 1) is a storage-format detail owned by the PlanStore implementation
 # (placed in todo_qt.persistence by ADR-0003), not part of the services API.
 
+
 class StoreError(Exception):
     path: Path
     reason: str
+
+
 class StoreCorruptError(StoreError): ...
+
+
 class StoreWriteError(StoreError): ...
+
 
 class PlanStore(Protocol):
     def load(self) -> PlanSnapshot | None: ...
     def save(self, snapshot: PlanSnapshot) -> None: ...
+
 
 @dataclass(frozen=True, slots=True)
 class ChangeResult:
@@ -728,11 +797,15 @@ class ChangeResult:
     save_error: StoreWriteError | None = None
     task_id: TaskId | None = None
 
-class PlanService: ...   # members as listed in the PlanService section
+
+class PlanService: ...  # members as listed in the PlanService section
+
 
 # ---- todo_qt.cli
 DATA_DIR_ENV_VAR: str = "TODO_QT_DATA_DIR"
 type UiRunner = Callable[[PlanService], int]
+
+
 def resolve_data_dir(environ: Mapping[str, str], default_dir: Path) -> Path: ...
 def main(
     argv: Sequence[str] | None = None,
