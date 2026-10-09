@@ -527,3 +527,13 @@ tasks:
       - tests/task_list/test_ui_window_keyboard.py
     depends_on: [T-31-ui-day-start, T-24-ui-delete-undo]
     acceptance: "uv run pytest -q tests/task_list/test_ui_window_keyboard.py && uv run mypy src && uv run lint-imports"
+
+  # Added during Phase 6: Hypothesis property tests flake under xdist load (FailedHealthCheck /
+  # deadline); a project-wide profile in tests/conftest.py fixes all property tests at once.
+  - id: T-33-hypothesis-profile
+    description: "Follow-up: project-wide Hypothesis profile (no deadline, too_slow health check off) so property tests can't flake under -n auto"
+    role: implementer
+    files_in_scope:
+      - tests/conftest.py
+    depends_on: [T-28-persistence-corrupt]
+    acceptance: "uv run pytest -q -n auto -p no:randomly tests/task_list/test_persistence_json_store_corrupt.py tests/task_list/test_domain_plan_move.py tests/task_list/test_domain_task.py && uv run mypy src"
