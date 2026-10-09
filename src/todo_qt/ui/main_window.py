@@ -42,10 +42,11 @@ class MainWindow(QWidget):
         super().__init__()
         self.setWindowTitle("Todo")
         self._service = service
-        self._editing_id: TaskId | None = None
+        self._editing: tuple[TaskId, tuple[str, datetime, datetime]] | None = None
+        """The task being edited and the form values it was opened with."""
         self.message_label = QLabel()
         notify = notifier or self.show_message
-        self.controller = UiController(service, notify, self.refresh)
+        self.controller = UiController(service, notify, self.refresh, self.message_label.clear)
         self.add_form = TaskForm()
         self.add_form.hide()
         self.add_form.submitted.connect(self._on_add_submitted)
@@ -99,6 +100,11 @@ class MainWindow(QWidget):
         if service.startup_error is not None:
             notify(startup_message(service.startup_error))
 
+    @property
+    def _editing_id(self) -> TaskId | None:
+        """The id of the task being edited, if the form is in edit mode."""
+        return None if self._editing is None else self._editing[0]
+
     def show_message(self, text: str) -> None:
         """Show a message in the window's message label."""
         self.message_label.setText(text)
@@ -106,7 +112,7 @@ class MainWindow(QWidget):
     def open_add_form(self) -> None:
         """Show the add form pre-filled with the default slot."""
         self.message_label.clear()
-        self._editing_id = None
+        self._editing = None
         slot = self._service.default_slot()
         self.add_form.open_with("", slot.start, slot.end)
 
@@ -116,8 +122,8 @@ class MainWindow(QWidget):
             return
         task = self._service.plan.tasks[index.row()]
         self.message_label.clear()
-        self._editing_id = task.id
         self.add_form.open_with(task.title, task.slot.start, task.slot.end)
+        self._editing = (task.id, self.add_form.values())
 
     def _on_edit_clicked(self) -> None:
         """Edit the currently selected row, if any."""
@@ -137,22 +143,25 @@ class MainWindow(QWidget):
         """Delete the task at `index`, closing the edit form if its task is gone."""
         if not index.isValid():
             return
-        self.message_label.clear()
         task_id = self._service.plan.tasks[index.row()].id
         self.controller.delete_task(task_id)
-        if self._editing_id is not None and not self._has_task(self._editing_id):
+        if self._editing is not None and not self._has_task(self._editing[0]):
             self.add_form.hide()
-            self._editing_id = None
+            self._editing = None
 
     def _on_add_submitted(self, title: str, start: datetime, end: datetime) -> None:
         """Add the task, or apply the edit in edit mode; close only when accepted."""
-        self.message_label.clear()
-        if self._editing_id is not None:
-            task_id = self._editing_id
-            accepted = self.controller.edit_task(task_id, title, start, end)
+        if self._editing is not None:
+            task_id, (opened_title, opened_start, opened_end) = self._editing
+            accepted = self.controller.edit_task(
+                task_id,
+                title if title != opened_title else None,
+                start if start != opened_start else None,
+                end if end != opened_end else None,
+            )
             if accepted or not self._has_task(task_id):
                 self.add_form.hide()  # also closes when the task vanished meanwhile
-                self._editing_id = None
+                self._editing = None
             return
         if self.controller.add_task(title, start, end):
             self.add_form.hide()
@@ -177,7 +186,6 @@ class MainWindow(QWidget):
         day_start = time(edited.hour(), edited.minute())
         if day_start == self._service.plan.day_start:
             return  # focus-out without an edit: keep any message on screen
-        self.message_label.clear()
         if not self.controller.set_day_start(day_start):
             self.refresh()  # rejected: snap the control back to the plan
 
