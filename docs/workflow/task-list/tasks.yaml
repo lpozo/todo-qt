@@ -539,3 +539,16 @@ tasks:
       - tests/conftest.py
     depends_on: [T-28-persistence-corrupt]
     acceptance: "uv run pytest -q -n auto -p no:randomly tests/task_list/test_persistence_json_store_corrupt.py tests/task_list/test_domain_plan_move.py tests/task_list/test_domain_task.py && uv run mypy src"
+
+  # Added during Phase 8: the final integration review found two cross-command UI bugs.
+  #   test_ui_confirming_edit_after_rechain_keeps_new_times
+  #   test_ui_successful_command_clears_stale_save_failure_message
+  - id: T-34-ui-stale-state
+    description: "Follow-up: an open edit form must not undo a re-chain, and a later successful command clears a stale message"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/controller.py
+      - src/todo_qt/ui/main_window.py
+      - tests/task_list/test_ui_window_stale_state.py
+    depends_on: [T-32-ui-keyboard, T-33-hypothesis-profile]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_window_stale_state.py && uv run mypy src && uv run lint-imports"
