@@ -17,8 +17,11 @@ type UiRunner = Callable[[PlanService], int]
 
 
 def resolve_data_dir(environ: Mapping[str, str], default_dir: Path) -> Path:
-    """Return the data directory to use (environment override comes later)."""
-    return default_dir
+    """Return the data directory: the env override if non-empty, else the default."""
+    value = environ.get(DATA_DIR_ENV_VAR, "")
+    if not value:
+        return default_dir
+    return Path(value).expanduser().absolute()
 
 
 def system_clock() -> datetime:
@@ -44,10 +47,17 @@ def main(
     run_ui: UiRunner | None = None,
 ) -> int:
     """Wire the application together, run the UI, and return its exit code."""
+    args = sys.argv[1:] if argv is None else list(argv)
+    if args:
+        print("usage: todo-qt (takes no arguments)", file=sys.stderr)
+        return 2
     env = os.environ if environ is None else environ
     runner = _run_qt_ui if run_ui is None else run_ui
     default_dir = default_data_dir(env, Path.home(), sys.platform)
     directory = resolve_data_dir(env, default_dir)
+    if directory.exists() and not directory.is_dir():
+        print(f"todo-qt: data directory is not a directory: {directory}", file=sys.stderr)
+        return 1
     service = PlanService(JsonPlanStore(directory), system_clock, new_task_id)
     return runner(service)
 
