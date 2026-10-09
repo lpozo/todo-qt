@@ -1,9 +1,14 @@
 """The Plan aggregate."""
 
 from dataclasses import dataclass, replace
-from datetime import time
+from datetime import datetime, time
 
-from todo_qt.domain.errors import DuplicateTaskIdError, TaskNotFoundError
+from todo_qt.domain.errors import (
+    DuplicateTaskIdError,
+    IndexOutOfRangeError,
+    InvalidDayStartError,
+    TaskNotFoundError,
+)
 from todo_qt.domain.task import (
     RemovedEntry,
     RemovedTasks,
@@ -16,6 +21,23 @@ from todo_qt.domain.task import (
 DEFAULT_DAY_START: time = time(9, 0)
 
 
+def _check_day_start(day_start: time) -> None:
+    if day_start.tzinfo is not None or day_start.second or day_start.microsecond:
+        raise InvalidDayStartError(day_start)
+
+
+def _rechain(tasks: tuple[Task, ...], first_start: datetime | None = None) -> tuple[Task, ...]:
+    """Chain tasks end to start, optionally moving the first to `first_start`."""
+    result: list[Task] = []
+    cursor = first_start
+    for task in tasks:
+        start = task.slot.start if cursor is None else cursor
+        end = start + (task.slot.end - task.slot.start)
+        result.append(replace(task, slot=TimeSlot(start, end)))
+        cursor = end
+    return tuple(result)
+
+
 @dataclass(frozen=True, slots=True)
 class Plan:
     """An ordered list of tasks plus the day start."""
@@ -24,7 +46,8 @@ class Plan:
     day_start: time = DEFAULT_DAY_START
 
     def __post_init__(self) -> None:
-        """Reject duplicate task ids."""
+        """Reject an invalid day start and duplicate task ids."""
+        _check_day_start(self.day_start)
         seen: set[TaskId] = set()
         for task in self.tasks:
             if task.id in seen:
@@ -84,3 +107,33 @@ class Plan:
         for entry in removed.entries:
             tasks.insert(min(entry.index, len(tasks)), entry.task)
         return Plan(tuple(tasks), self.day_start)
+
+    def move(self, task_id: TaskId, to_index: int) -> Plan:
+        """Return a new plan with the task at its final index and the timeline re-chained."""
+        if not 0 <= to_index < len(self.tasks):
+            raise IndexOutOfRangeError(to_index, len(self.tasks))
+        old = self.index_of(task_id)
+        if to_index == old:
+            return self
+        moved = self.tasks[old]
+        rest = (*self.tasks[:old], *self.tasks[old + 1 :])
+        reordered = (*rest[:to_index], moved, *rest[to_index:])
+        if to_index == 0 or old == 0:
+            anchor_date = (
+                self.tasks[0].slot.start.date() if to_index == 0 else rest[0].slot.start.date()
+            )
+            return Plan(
+                _rechain(reordered, datetime.combine(anchor_date, self.day_start)), self.day_start
+            )
+        head = reordered[:to_index]
+        return Plan((*head, *_rechain(reordered[to_index:], head[-1].slot.end)), self.day_start)
+
+    def set_day_start(self, day_start: time) -> Plan:
+        """Return a new plan with a new day start and the timeline re-chained from it."""
+        _check_day_start(day_start)
+        if day_start == self.day_start:
+            return self
+        if not self.tasks:
+            return Plan(self.tasks, day_start)
+        first_date = self.tasks[0].slot.start.date()
+        return Plan(_rechain(self.tasks, datetime.combine(first_date, day_start)), day_start)
