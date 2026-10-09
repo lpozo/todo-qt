@@ -3,7 +3,9 @@ name = "todo-qt"
 version = "0.1.0"
 requires-python = ">=3.14"
 description = "A desktop to-do list application built with Qt."
-license = { text = "MIT" }
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = ["pyside6-essentials>=6.12,<7"]
 
 [project.scripts]
