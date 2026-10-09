@@ -708,7 +708,8 @@ def is_overdue(task: Task, now: datetime) -> bool: ...
 type PlanSnapshot = Plan
 type Clock = Callable[[], datetime]
 type IdFactory = Callable[[], TaskId]
-SCHEMA_VERSION: int = 1
+# SCHEMA_VERSION (= 1) is a storage-format detail owned by the PlanStore implementation
+# (placed in todo_qt.persistence by ADR-0003), not part of the services API.
 
 class StoreError(Exception):
     path: Path
