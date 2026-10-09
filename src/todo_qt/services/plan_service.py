@@ -126,8 +126,8 @@ class PlanService:
 
     def move_task(self, task_id: TaskId, to_index: int) -> ChangeResult:
         """Move a task and re-chain the timeline."""
-        raise NotImplementedError
+        return self._commit(self._plan.move(task_id, to_index))
 
     def set_day_start(self, day_start: time) -> ChangeResult:
         """Change the day start and re-chain the timeline."""
-        raise NotImplementedError
+        return self._commit(self._plan.set_day_start(day_start))
