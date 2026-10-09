@@ -8,6 +8,14 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from pathlib import Path
 
 import pytest
+from hypothesis import HealthCheck, settings
+
+# Under `pytest -n auto`, CPU contention makes Hypothesis raise
+# FailedHealthCheck(too_slow) ("Input generation is slow") on the plan
+# strategy. Suppressing it globally could hide a genuinely slow strategy later.
+# The per-example deadline stays on to catch slow code such as Plan.move.
+settings.register_profile("todo-qt", suppress_health_check=[HealthCheck.too_slow])
+settings.load_profile("todo-qt")
 
 
 @pytest.fixture(autouse=True)
