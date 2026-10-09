@@ -270,9 +270,17 @@ source_modules = [
   "todo_qt.domain",
   "todo_qt.services",
   "todo_qt.persistence",
-  "todo_qt.cli",
 ]
 forbidden_modules = ["PySide6", "shiboken6", "PyQt6", "PyQt5", "PySide2"]
+
+# cli imports todo_qt.ui (lazily) to launch the window, so cli -> ui -> PySide6 is expected;
+# this contract still rejects a direct Qt import in cli.
+[[tool.importlinter.contracts]]
+name = "cli imports Qt only through ui"
+type = "forbidden"
+source_modules = ["todo_qt.cli"]
+forbidden_modules = ["PySide6", "shiboken6", "PyQt6", "PyQt5", "PySide2"]
+allow_indirect_imports = true
 
 [[tool.importlinter.contracts]]
 name = "Domain does no I/O"
@@ -300,9 +308,12 @@ type = "forbidden"
 source_modules = ["todo_qt"]
 forbidden_modules = [
   "socket", "ssl", "urllib", "http", "ftplib", "smtplib", "requests", "httpx", "aiohttp",
-  "PySide6.QtNetwork",
 ]
 ```
+
+import-linter can't name a sub-package of an external package (such as `PySide6.QtNetwork`) in
+`forbidden_modules`. `pyside6-essentials` ships QtNetwork, so "no Qt networking" in `ui` is a
+review rule, not a contract.
 
 Rule of thumb for `services`: `pathlib` is allowed there (only to type `StoreError.path`), `os` is not.
 
