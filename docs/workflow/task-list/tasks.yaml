@@ -1,0 +1,526 @@
+feature: task-list
+
+tasks:
+  # Plan slice(s): 0a, 0b(part)
+  - id: T-00-skeleton
+    description: "Slice 0a+0b: Qt deps, qt_api, 7 import-linter contracts, CI apt step, conftest, test package marker, empty package markers (domain/services/persistence/ui)"
+    role: implementer
+    files_in_scope:
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/ci.yml
+      - tests/conftest.py
+      - tests/task_list/__init__.py
+      - src/todo_qt/domain/__init__.py
+      - src/todo_qt/services/__init__.py
+      - src/todo_qt/persistence/__init__.py
+      - src/todo_qt/ui/__init__.py
+    depends_on: []
+    acceptance: "uv lock --check && uv run pytest -q tests/test_smoke.py && uv run mypy src"
+
+  # Plan slice(s): 0c
+  #   test_default_day_start_is_nine_oclock
+  - id: T-01-domain-skeleton
+    description: "Slice 0c: domain package shell (errors, task types, Plan defaults, schedule stubs, final re-exports) plus default-day-start test"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/domain/__init__.py
+      - src/todo_qt/domain/errors.py
+      - src/todo_qt/domain/task.py
+      - src/todo_qt/domain/plan.py
+      - src/todo_qt/domain/schedule.py
+      - tests/task_list/test_domain_plan_defaults.py
+    depends_on: [T-00-skeleton]
+    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_defaults.py && uv run mypy src"
+
+  # Plan slice(s): 0d(part)
+  - id: T-02-services-skeleton
+    description: "Slice 0d (services half): store errors, ports, ChangeResult, PlanService init/startup, final re-exports"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/services/__init__.py
+      - src/todo_qt/services/errors.py
+      - src/todo_qt/services/ports.py
+      - src/todo_qt/services/plan_service.py
+    depends_on: [T-01-domain-skeleton]
+    acceptance: "uv run python -c 'import todo_qt.services' && uv run mypy src"
+
+  # Plan slice(s): 0b(part), 0d(part)
+  #   test_service_starts_empty_when_nothing_saved
+  #   test_service_starts_with_saved_tasks_in_order_and_day_start
+  #   test_service_starts_empty_on_corrupt_store_without_saving
+  #   test_service_does_not_save_during_construction
+  - id: T-03-test-fakes-startup
+    description: "Slice 0b (fakes) + service startup tests: FakeStore, RecordingStore, clock, ids, builders; startup examples"
+    role: implementer
+    files_in_scope:
+      - tests/task_list/fakes.py
+      - tests/task_list/test_service_startup.py
+    depends_on: [T-02-services-skeleton]
+    acceptance: "uv run pytest -q tests/task_list/test_service_startup.py && uv run mypy src"
+
+  # Plan slice(s): 0d(part)
+  #   test_store_load_returns_none_when_nothing_saved
+  - id: T-04-persistence-skeleton
+    description: "Slice 0d (persistence half): default_data_dir, JsonPlanStore stub (load None when absent), re-exports, locations and store-load tests"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/persistence/__init__.py
+      - src/todo_qt/persistence/locations.py
+      - src/todo_qt/persistence/json_store.py
+      - tests/task_list/test_persistence_json_store.py
+      - tests/task_list/test_persistence_locations.py
+    depends_on: [T-02-services-skeleton]
+    acceptance: "uv run pytest -q tests/task_list/test_persistence_json_store.py tests/task_list/test_persistence_locations.py && uv run mypy src"
+
+  # Plan slice(s): 0e(part)
+  - id: T-05-ui-shell
+    description: "Slice 0e (ui half): run_app, MainWindow with empty QListView and inert Add button, TaskListModel rowCount, controller and messages placeholders"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/__init__.py
+      - src/todo_qt/ui/app.py
+      - src/todo_qt/ui/main_window.py
+      - src/todo_qt/ui/task_model.py
+      - src/todo_qt/ui/controller.py
+      - src/todo_qt/ui/messages.py
+    depends_on: [T-02-services-skeleton]
+    acceptance: "uv run python -c 'import todo_qt.ui' && uv run mypy src"
+
+  # Plan slice(s): 0e(part)
+  #   test_main_returns_ui_exit_code
+  - id: T-06-cli-wiring
+    description: "Slice 0e (cli half): composition root in cli.main, delete tests/test_cli.py, cli main and walking-skeleton smoke tests; first task where lint-imports passes"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/cli.py
+      - tests/test_cli.py
+      - tests/task_list/test_cli_main.py
+      - tests/task_list/test_smoke_launch.py
+    depends_on: [T-03-test-fakes-startup, T-04-persistence-skeleton, T-05-ui-shell]
+    acceptance: "uv run pytest -q tests/task_list/test_cli_main.py tests/task_list/test_smoke_launch.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 1
+  #   test_normalize_title_strips_surrounding_whitespace
+  #   test_normalize_title_rejects_whitespace_only
+  #   test_normalize_title_rejects_empty_string
+  #   test_time_slot_accepts_end_after_start
+  #   test_time_slot_rejects_end_equal_to_start
+  #   test_time_slot_rejects_end_before_start
+  #   test_time_slot_rejects_timezone_aware_datetime
+  #   test_time_slot_rejects_non_zero_seconds
+  #   test_time_slot_spans_midnight
+  #   test_task_defaults_to_not_done
+  #   test_task_rejects_blank_title
+  - id: T-07-value-types
+    description: "Slice 1: normalize_title, TimeSlot validation, Task and RemovedTasks invariants"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/domain/task.py
+      - tests/task_list/test_domain_task.py
+    depends_on: [T-01-domain-skeleton]
+    acceptance: "uv run pytest -q tests/task_list/test_domain_task.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 2
+  - id: T-08-ui-messages
+    description: "Slice 2: Qt-free UI message strings (message_for, save_failure_message, startup_message)"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/messages.py
+      - tests/task_list/test_ui_messages.py
+    depends_on: [T-05-ui-shell, T-02-services-skeleton]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_messages.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 3
+  #   test_default_slot_rounds_up_to_next_full_hour
+  #   test_default_slot_at_exact_hour_uses_following_hour
+  #   test_default_slot_rolls_over_midnight
+  #   test_default_slot_ignores_seconds
+  #   test_default_slot_rejects_aware_now
+  #   test_default_slot_ignores_day_start
+  #   test_is_overdue_true_for_open_task_ended_before_now
+  #   test_is_overdue_false_at_exact_end
+  #   test_is_overdue_false_for_done_task
+  #   test_is_overdue_false_for_future_task
+  #   test_is_overdue_returns_after_uncomplete
+  #   test_is_overdue_rejects_aware_now
+  - id: T-09-schedule
+    description: "Slice 3: default_slot and is_overdue pure functions"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/domain/schedule.py
+      - tests/task_list/test_domain_schedule.py
+    depends_on: [T-01-domain-skeleton]
+    acceptance: "uv run pytest -q tests/task_list/test_domain_schedule.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 4, 28
+  #   test_resolve_data_dir_uses_env_override
+  #   test_resolve_data_dir_falls_back_to_default_when_unset
+  #   test_resolve_data_dir_treats_empty_value_as_unset
+  #   test_main_launches_ui_with_empty_service_when_no_saved_data
+  #   test_main_rejects_unexpected_arguments
+  #   test_main_fails_when_data_dir_unusable
+  - id: T-10-cli-data-dir-contract
+    description: "Slices 4+28 (merged, both own cli.py): TODO_QT_DATA_DIR override; argv rejection and unusable data dir handling"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/cli.py
+      - tests/task_list/test_cli_data_dir.py
+      - tests/task_list/test_cli_main_contract.py
+    depends_on: [T-06-cli-wiring]
+    acceptance: "uv run pytest -q tests/task_list/test_cli_data_dir.py tests/task_list/test_cli_main_contract.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 5
+  #   test_ui_shows_empty_list_and_add_control_when_no_saved_tasks
+  #   test_ui_shows_saved_tasks_in_order_with_day_start
+  - id: T-11-ui-saved-list
+    description: "Slice 5: model display text and DoneRole, read-only day-start QTimeEdit, launch tests"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/task_model.py
+      - src/todo_qt/ui/main_window.py
+      - tests/task_list/test_ui_window_launch.py
+    depends_on: [T-06-cli-wiring]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_window_launch.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 6
+  #   test_add_appends_task_at_bottom_not_done
+  #   test_add_rejects_whitespace_only_title
+  #   test_add_accepts_slot_entirely_in_past
+  #   test_add_rejects_duplicate_id
+  #   test_add_strips_title
+  - id: T-12-plan-add
+    description: "Slice 6: Plan.index_of, get, add and duplicate-id check"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/domain/plan.py
+      - tests/task_list/test_domain_plan_add.py
+    depends_on: [T-07-value-types]
+    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_add.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 7, 8
+  #   test_service_default_slot_uses_injected_clock
+  #   test_service_overdue_ids_reflect_clock_advancing
+  #   test_service_overdue_ids_exclude_done_tasks
+  #   test_service_is_overdue_unknown_id_raises
+  #   test_service_add_task_appends_and_saves
+  #   test_service_add_task_blank_title_raises_and_does_not_save
+  #   test_service_add_past_task_is_reported_overdue
+  #   test_service_keeps_change_in_memory_when_save_fails
+  #   test_service_non_write_store_errors_propagate
+  - id: T-13-service-queries-add
+    description: "Slices 7+8 (merged, both own plan_service.py): service queries, add_task, command helper and auto-save contract"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/services/plan_service.py
+      - tests/task_list/test_service_queries.py
+      - tests/task_list/test_service_add.py
+      - tests/task_list/test_service_save_failure.py
+    depends_on: [T-09-schedule, T-12-plan-add, T-03-test-fakes-startup]
+    acceptance: "uv run pytest -q tests/task_list/test_service_queries.py tests/task_list/test_service_add.py tests/task_list/test_service_save_failure.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 9
+  #   test_ui_add_blank_title_shows_title_required
+  #   test_ui_add_end_not_after_start_shows_end_after_start_message
+  - id: T-14-controller-add
+    description: "Slice 9: UiController with _run error mapping and add_task"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/controller.py
+      - tests/task_list/test_ui_controller_add.py
+    depends_on: [T-08-ui-messages, T-13-service-queries-add]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_controller_add.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 10
+  #   test_ui_add_form_is_prefilled_with_next_full_hour
+  #   test_ui_add_valid_task_appears_at_bottom
+  - id: T-15-ui-add-form
+    description: "Slice 10: convert helpers, inline TaskForm, Add button wiring in MainWindow"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/convert.py
+      - src/todo_qt/ui/task_form.py
+      - src/todo_qt/ui/main_window.py
+      - tests/task_list/test_ui_window_add.py
+    depends_on: [T-11-ui-saved-list, T-14-controller-add]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_window_add.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 11
+  #   test_ui_save_failure_message_shown_and_change_kept
+  #   test_ui_corrupt_store_message_shown_and_list_empty
+  - id: T-16-ui-notifications
+    description: "Slice 11: startup error and save failure notifications in MainWindow"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/main_window.py
+      - tests/task_list/test_ui_window_notifications.py
+    depends_on: [T-15-ui-add-form]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_window_notifications.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 12
+  #   test_edit_title_keeps_position_times_and_done_flag
+  #   test_edit_title_rejects_blank_title_and_keeps_original
+  #   test_edit_title_unknown_id_raises
+  #   test_reschedule_changes_only_target_task_times
+  #   test_reschedule_may_create_overlap
+  #   test_reschedule_with_end_not_after_start_is_rejected_at_slot_construction
+  #   test_set_done_marks_task_done_in_place
+  #   test_set_done_false_reopens_task
+  #   test_set_done_is_idempotent
+  - id: T-17-plan-edit
+    description: "Slice 12: Plan.edit_title, reschedule, set_done"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/domain/plan.py
+      - tests/task_list/test_domain_plan_edit.py
+    depends_on: [T-12-plan-add]
+    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_edit.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 13
+  #   test_service_edit_title_saves_new_title
+  #   test_service_edit_title_blank_keeps_original_and_does_not_save
+  #   test_service_reschedule_saves_and_leaves_others
+  #   test_service_set_done_saves
+  #   test_service_set_done_same_value_does_not_save
+  #   test_service_uncomplete_makes_past_task_overdue_again
+  #   test_service_next_successful_save_persists_earlier_unsaved_change
+  - id: T-18-service-edit
+    description: "Slice 13: service edit_title, reschedule, set_done and save recovery"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/services/plan_service.py
+      - tests/task_list/test_service_edit.py
+      - tests/task_list/test_service_save_recovery.py
+    depends_on: [T-13-service-queries-add, T-17-plan-edit]
+    acceptance: "uv run pytest -q tests/task_list/test_service_edit.py tests/task_list/test_service_save_recovery.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 14
+  #   test_ui_edit_title_blank_keeps_original
+  #   test_ui_reschedule_end_not_after_start_keeps_original_times
+  - id: T-19-controller-edit
+    description: "Slice 14: controller edit_title, reschedule, set_done"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/controller.py
+      - tests/task_list/test_ui_controller_edit.py
+    depends_on: [T-14-controller-add, T-18-service-edit]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_controller_edit.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 15
+  #   test_ui_add_past_task_is_highlighted_overdue
+  #   test_ui_toggle_done_strikes_through_and_clears_overdue
+  #   test_ui_toggle_undone_restores_overdue_highlight
+  #   test_ui_overdue_highlight_appears_without_user_action
+  - id: T-20-ui-done-overdue
+    description: "Slice 15: done toggle, strike-out, overdue highlight and refresh timer"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/task_model.py
+      - src/todo_qt/ui/main_window.py
+      - tests/task_list/test_ui_done_overdue.py
+    depends_on: [T-16-ui-notifications, T-19-controller-edit]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_done_overdue.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 16
+  - id: T-21-ui-edit-form
+    description: "Slice 16: edit mode of TaskForm wired in MainWindow"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/task_form.py
+      - src/todo_qt/ui/main_window.py
+      - tests/task_list/test_ui_window_edit.py
+    depends_on: [T-20-ui-done-overdue]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_window_edit.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 17
+  #   test_delete_removes_task_without_touching_others
+  #   test_delete_unknown_id_raises
+  #   test_clear_completed_removes_only_done_tasks
+  #   test_clear_completed_with_nothing_done_returns_none
+  #   test_restore_reinserts_deleted_task_at_previous_index
+  #   test_restore_reinserts_cleared_tasks_at_previous_positions
+  #   test_restore_after_add_inserts_at_old_index_not_at_end
+  #   test_restore_clamps_index_beyond_current_length
+  #   test_restore_keeps_done_flag_and_times
+  #   test_restore_duplicate_id_raises
+  - id: T-22-plan-remove
+    description: "Slice 17: Plan.delete, clear_completed, restore"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/domain/plan.py
+      - tests/task_list/test_domain_plan_remove.py
+    depends_on: [T-17-plan-edit]
+    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_remove.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 18
+  #   test_service_new_session_has_no_undo
+  #   test_service_delete_removes_task_and_saves
+  #   test_service_undo_restores_deleted_task_at_previous_position
+  #   test_service_undo_only_restores_last_delete
+  #   test_service_undo_with_nothing_deleted_does_nothing
+  #   test_service_undo_after_delete_then_add_inserts_at_old_index
+  #   test_service_clear_completed_removes_done_and_saves
+  #   test_service_undo_after_clear_completed_restores_all_cleared
+  #   test_service_clear_completed_with_nothing_done_is_noop
+  #   test_service_can_clear_completed_false_when_none_done
+  #   test_service_second_delete_replaces_undo_slot_after_clear
+  #   test_service_undo_twice_after_single_delete_restores_once
+  - id: T-23-service-undo
+    description: "Slice 18: service delete_task, clear_completed, one-slot undo"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/services/plan_service.py
+      - tests/task_list/test_service_undo.py
+    depends_on: [T-18-service-edit, T-22-plan-remove]
+    acceptance: "uv run pytest -q tests/task_list/test_service_undo.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 19
+  #   test_ui_ctrl_z_restores_last_deleted_task
+  #   test_ui_undo_with_nothing_deleted_changes_nothing
+  #   test_ui_clear_completed_disabled_when_nothing_done
+  #   test_ui_clear_completed_removes_done_rows_and_ctrl_z_restores_them
+  - id: T-24-ui-delete-undo
+    description: "Slice 19: controller delete/undo/clear, Delete button, Undo action, Clear completed button"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/controller.py
+      - src/todo_qt/ui/main_window.py
+      - tests/task_list/test_ui_window_undo.py
+    depends_on: [T-21-ui-edit-form, T-23-service-undo]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_window_undo.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 20, 21
+  #   test_move_into_middle_rechains_tail
+  #   test_move_keeps_tasks_above_destination_unchanged
+  #   test_move_to_top_starts_at_day_start_on_old_first_tasks_date
+  #   test_move_to_top_uses_date_of_previous_first_task_not_moved_task
+  #   test_move_rechains_done_task_and_keeps_done_flag
+  #   test_move_cascade_crosses_midnight
+  #   test_move_to_own_position_is_noop
+  #   test_move_first_task_to_end_rechains_from_new_first
+  #   test_move_first_task_down_snaps_new_first_to_day_start
+  #   test_move_first_task_down_uses_new_first_tasks_own_date
+  #   test_move_non_first_task_down_leaves_tasks_above_untouched
+  #   test_move_index_out_of_range_raises
+  #   test_move_unknown_id_raises
+  #   test_move_preserves_durations_titles_and_ids
+  #   test_set_day_start_rechains_from_first_task
+  #   test_set_day_start_on_empty_plan_only_changes_day_start
+  #   test_set_day_start_to_same_value_is_noop
+  #   test_set_day_start_rechain_crosses_midnight
+  #   test_set_day_start_rejects_seconds
+  #   test_set_day_start_rechains_done_tasks_too
+  - id: T-25-plan-move-day-start
+    description: "Slices 20+21 (merged, both own plan.py): Plan.move cascade and Plan.set_day_start with day-start validation"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/domain/plan.py
+      - tests/task_list/test_domain_plan_move.py
+      - tests/task_list/test_domain_plan_day_start.py
+    depends_on: [T-22-plan-remove]
+    acceptance: "uv run pytest -q tests/task_list/test_domain_plan_move.py tests/task_list/test_domain_plan_day_start.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 25
+  #   test_main_reads_and_saves_in_override_dir
+  #   test_main_launches_ui_with_saved_tasks
+  #   test_store_roundtrip_preserves_order_titles_times_done_and_day_start
+  #   test_store_files_are_user_only
+  - id: T-26-persistence-save-load
+    description: "Slice 25: codec encode/decode, JsonPlanStore save/load with user-only modes, round-trip and CLI saved-data tests"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/persistence/codec.py
+      - src/todo_qt/persistence/json_store.py
+      - tests/task_list/test_persistence_json_store_roundtrip.py
+      - tests/task_list/test_cli_main_saved.py
+    depends_on: [T-07-value-types, T-10-cli-data-dir-contract, T-13-service-queries-add, T-04-persistence-skeleton]
+    acceptance: "uv run pytest -q tests/task_list/test_persistence_json_store_roundtrip.py tests/task_list/test_cli_main_saved.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 26
+  #   test_store_save_failure_raises_store_write_error
+  #   test_store_save_is_atomic_previous_state_survives_failed_write
+  - id: T-27-persistence-atomic
+    description: "Slice 26: atomic save (O_EXCL temp, fsync, replace) and write-failure mapping to StoreWriteError"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/persistence/json_store.py
+      - tests/task_list/test_persistence_json_store_write.py
+    depends_on: [T-26-persistence-save-load]
+    acceptance: "uv run pytest -q tests/task_list/test_persistence_json_store_write.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 27
+  #   test_main_with_corrupt_data_still_launches_and_preserves_file
+  #   test_store_load_corrupt_data_raises_and_leaves_file_untouched
+  #   test_store_load_rejects_unknown_schema_version
+  #   test_store_load_rejects_end_not_after_start
+  #   test_store_save_after_corrupt_load_preserves_unreadable_content
+  - id: T-28-persistence-corrupt
+    description: "Slice 27: strict decoding, StoreCorruptError, corrupt file preserved on next save"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/persistence/codec.py
+      - src/todo_qt/persistence/json_store.py
+      - tests/task_list/test_persistence_json_store_corrupt.py
+      - tests/task_list/test_cli_main_corrupt.py
+    depends_on: [T-27-persistence-atomic, T-12-plan-add]
+    acceptance: "uv run pytest -q tests/task_list/test_persistence_json_store_corrupt.py tests/task_list/test_cli_main_corrupt.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 22
+  #   test_service_saves_after_every_kind_of_change
+  #   test_service_restart_after_kill_shows_last_change
+  #   test_service_restart_preserves_order_titles_times_done_flags
+  #   test_service_add_task_after_day_start_change_still_prefills_next_hour
+  #   test_service_set_day_start_saves_new_day_start_and_rechains
+  #   test_service_set_day_start_on_empty_list_saves_day_start
+  #   test_service_day_start_survives_restart
+  #   test_service_undo_after_move_restores_with_old_times
+  #   test_service_move_task_rechains_and_saves
+  #   test_service_move_task_to_same_index_does_not_save
+  - id: T-29-service-move-day-start
+    description: "Slice 22: service move_task, set_day_start, auto-save and restart integration"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/services/plan_service.py
+      - tests/task_list/test_service_move.py
+      - tests/task_list/test_service_day_start.py
+      - tests/task_list/test_service_autosave.py
+    depends_on: [T-23-service-undo, T-25-plan-move-day-start, T-26-persistence-save-load]
+    acceptance: "uv run pytest -q tests/task_list/test_service_move.py tests/task_list/test_service_day_start.py tests/task_list/test_service_autosave.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 23
+  #   test_ui_drag_task_between_a_and_b_rechains_times
+  - id: T-30-ui-drag
+    description: "Slice 23: drag-to-reorder in model, window and controller move_task"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/task_model.py
+      - src/todo_qt/ui/main_window.py
+      - src/todo_qt/ui/controller.py
+      - tests/task_list/test_ui_model_drag.py
+    depends_on: [T-24-ui-delete-undo, T-29-service-move-day-start]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_model_drag.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 24
+  #   test_ui_change_day_start_rechains_displayed_times
+  - id: T-31-ui-day-start
+    description: "Slice 24: editable day-start control wired to controller.set_day_start"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/controller.py
+      - src/todo_qt/ui/main_window.py
+      - tests/task_list/test_ui_window_day_start.py
+    depends_on: [T-30-ui-drag]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_window_day_start.py && uv run mypy src && uv run lint-imports"
+
+  # Plan slice(s): 29
+  #   test_ui_enter_in_add_form_confirms_task
+  #   test_ui_delete_key_deletes_selected_task_and_is_undoable
+  - id: T-32-ui-keyboard
+    description: "Slice 29 [Could]: Enter confirms add form, Delete key deletes selected task"
+    role: implementer
+    files_in_scope:
+      - src/todo_qt/ui/task_form.py
+      - src/todo_qt/ui/main_window.py
+      - tests/task_list/test_ui_window_keyboard.py
+    depends_on: [T-31-ui-day-start, T-24-ui-delete-undo]
+    acceptance: "uv run pytest -q tests/task_list/test_ui_window_keyboard.py && uv run mypy src && uv run lint-imports"
