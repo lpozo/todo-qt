@@ -4,7 +4,14 @@ from dataclasses import dataclass, replace
 from datetime import time
 
 from todo_qt.domain.errors import DuplicateTaskIdError, TaskNotFoundError
-from todo_qt.domain.task import Task, TaskId, TimeSlot, normalize_title
+from todo_qt.domain.task import (
+    RemovedEntry,
+    RemovedTasks,
+    Task,
+    TaskId,
+    TimeSlot,
+    normalize_title,
+)
 
 DEFAULT_DAY_START: time = time(9, 0)
 
@@ -56,3 +63,24 @@ class Plan:
     def set_done(self, task_id: TaskId, done: bool) -> Plan:
         """Return a new plan with the task's done flag set."""
         return self._with_task(replace(self.get(task_id), done=done))
+
+    def delete(self, task_id: TaskId) -> tuple[Plan, RemovedTasks]:
+        """Return a new plan without the task, plus what was removed."""
+        index = self.index_of(task_id)
+        removed = RemovedTasks((RemovedEntry(index, self.tasks[index]),))
+        return Plan((*self.tasks[:index], *self.tasks[index + 1 :]), self.day_start), removed
+
+    def clear_completed(self) -> tuple[Plan, RemovedTasks | None]:
+        """Return a new plan without done tasks, plus what was removed (None if none)."""
+        entries = tuple(RemovedEntry(i, t) for i, t in enumerate(self.tasks) if t.done)
+        if not entries:
+            return self, None
+        open_tasks = tuple(t for t in self.tasks if not t.done)
+        return Plan(open_tasks, self.day_start), RemovedTasks(entries)
+
+    def restore(self, removed: RemovedTasks) -> Plan:
+        """Return a new plan with removed tasks re-inserted at their old indexes."""
+        tasks = list(self.tasks)
+        for entry in removed.entries:
+            tasks.insert(min(entry.index, len(tasks)), entry.task)
+        return Plan(tuple(tasks), self.day_start)
