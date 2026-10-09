@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 from todo_qt.services import PlanService
 from todo_qt.ui.controller import Notifier, UiController
+from todo_qt.ui.messages import startup_message
 from todo_qt.ui.task_form import TaskForm
 from todo_qt.ui.task_model import TaskListModel
 
@@ -27,7 +28,8 @@ class MainWindow(QWidget):
         self.setWindowTitle("Todo")
         self._service = service
         self.message_label = QLabel()
-        self.controller = UiController(service, notifier or self.show_message, self.refresh)
+        notify = notifier or self.show_message
+        self.controller = UiController(service, notify, self.refresh)
         self.add_form = TaskForm()
         self.add_form.hide()
         self.add_form.submitted.connect(self._on_add_submitted)
@@ -46,6 +48,8 @@ class MainWindow(QWidget):
         layout.addWidget(self.add_form)
         layout.addWidget(self.add_button)
         self.add_button.clicked.connect(self.open_add_form)
+        if service.startup_error is not None:
+            notify(startup_message(service.startup_error))
 
     def show_message(self, text: str) -> None:
         """Show a message in the window's message label."""
