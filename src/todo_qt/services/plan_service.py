@@ -104,15 +104,25 @@ class PlanService:
 
     def delete_task(self, task_id: TaskId) -> ChangeResult:
         """Delete a task, remembering it for undo."""
-        raise NotImplementedError
+        new_plan, removed = self._plan.delete(task_id)
+        self._undo_slot = removed
+        return self._commit(new_plan)
 
     def clear_completed(self) -> ChangeResult:
         """Delete all done tasks, remembering them for undo."""
-        raise NotImplementedError
+        new_plan, removed = self._plan.clear_completed()
+        if removed is None:
+            return self._commit(new_plan)
+        self._undo_slot = removed
+        return self._commit(new_plan)
 
     def undo(self) -> ChangeResult:
         """Restore the last removed tasks."""
-        raise NotImplementedError
+        if self._undo_slot is None:
+            return self._commit(self._plan)
+        new_plan = self._plan.restore(self._undo_slot)
+        self._undo_slot = None
+        return self._commit(new_plan)
 
     def move_task(self, task_id: TaskId, to_index: int) -> ChangeResult:
         """Move a task and re-chain the timeline."""
