@@ -512,8 +512,10 @@ tasks:
       - src/todo_qt/ui/controller.py
       - src/todo_qt/ui/main_window.py
       - tests/task_list/test_ui_window_day_start.py
+      # The launch test pinned the control as read-only; this task makes it editable.
+      - tests/task_list/test_ui_window_launch.py
     depends_on: [T-30-ui-drag]
-    acceptance: "uv run pytest -q tests/task_list/test_ui_window_day_start.py && uv run mypy src && uv run lint-imports"
+    acceptance: "uv run pytest -q tests/task_list/test_ui_window_day_start.py tests/task_list/test_ui_window_launch.py && uv run mypy src && uv run lint-imports"
 
   # Plan slice(s): 29
   #   test_ui_enter_in_add_form_confirms_task
