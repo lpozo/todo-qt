@@ -39,7 +39,7 @@ def test_ui_shows_saved_tasks_in_order_with_day_start(
     assert "2026-01-02 09:30" in rows[0]
     assert [model.index(i).data(DONE_ROLE) for i in range(3)] == [False, True, False]
     assert window.day_start_edit.time() == QTime(8, 30)
-    assert window.day_start_edit.isReadOnly()
+    assert not window.day_start_edit.isReadOnly()
 
 
 def test_model_refresh_picks_up_plan_changes(qtbot: QtBot, make_service: MakeService) -> None:

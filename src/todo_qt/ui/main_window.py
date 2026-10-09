@@ -1,8 +1,8 @@
 """Main application window."""
 
-from datetime import datetime
+from datetime import datetime, time
 
-from PySide6.QtCore import QModelIndex, Qt, QTime, QTimer
+from PySide6.QtCore import QModelIndex, QSignalBlocker, Qt, QTime, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -60,8 +60,8 @@ class MainWindow(QWidget):
         self.delete_button.clicked.connect(self._on_delete_clicked)
         self.clear_completed_button.clicked.connect(self.controller.clear_completed)
         self.day_start_edit = QTimeEdit()
-        self.day_start_edit.setReadOnly(True)
         self.day_start_edit.setDisplayFormat("HH:mm")
+        self.day_start_edit.editingFinished.connect(self._on_day_start_edited)
         self.refresh()
         self.overdue_timer = QTimer(self)
         self.overdue_timer.setInterval(OVERDUE_REFRESH_MS)
@@ -145,7 +145,18 @@ class MainWindow(QWidget):
         self.undo_action.setEnabled(self._service.can_undo)
         self.undo_button.setEnabled(self._service.can_undo)
         day_start = self._service.plan.day_start
-        self.day_start_edit.setTime(QTime(day_start.hour, day_start.minute))
+        with QSignalBlocker(self.day_start_edit):
+            self.day_start_edit.setTime(QTime(day_start.hour, day_start.minute))
+
+    def _on_day_start_edited(self) -> None:
+        """Apply the day start the user finished editing."""
+        edited = self.day_start_edit.time()
+        day_start = time(edited.hour(), edited.minute())
+        if day_start == self._service.plan.day_start:
+            return  # focus-out without an edit: keep any message on screen
+        self.message_label.clear()
+        if not self.controller.set_day_start(day_start):
+            self.refresh()  # rejected: snap the control back to the plan
 
     def refresh_overdue(self) -> None:
         """Re-evaluate overdue tasks against the clock."""

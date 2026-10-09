@@ -1,7 +1,7 @@
 """Qt-free UI controller: the bridge between widgets and the plan service."""
 
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, time
 
 from todo_qt.domain import DomainError, TaskId, TaskNotFoundError, TimeSlot, normalize_title
 from todo_qt.services import ChangeResult, PlanService
@@ -81,6 +81,10 @@ class UiController:
     def clear_completed(self) -> bool:
         """Delete all done tasks (undoable); a no-op when none are done."""
         return self._run(self._service.clear_completed)
+
+    def set_day_start(self, day_start: time) -> bool:
+        """Change the day start (re-chaining the list); a no-op if unchanged."""
+        return self._run(lambda: self._service.set_day_start(day_start))
 
     def undo(self) -> bool:
         """Restore the last removed tasks; a no-op when there is nothing to undo."""
